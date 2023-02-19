@@ -12,37 +12,39 @@ application = Flask(__name__)
 application.config.from_object(Configuration)
 jwt = JWTManager(application)
 
+email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
 
 @application.route("/register", methods=["POST"])
 def register():
     # Geting Fields
     forename = request.json.get('forename', '')
-    if len(forename) == 0 or len(forename) > 256:
-        return Response(jsonify(message="Field forename is missing."), 400)
+    if type(forename)!=str or len(forename) == 0 or len(forename) > 256:
+        return jsonify(message="Field forename is missing."), 400
     surname = request.json.get('surname', '')
-    if len(surname) == 0 or len(surname) > 256:
-        return Response(jsonify(message="Field surname is missing."), 400)
+    if type(surname)!=str or len(surname) == 0 or len(surname) > 256:
+        return jsonify(message="Field surname is missing."), 400
     email = request.json.get('email', '')
-    if len(email) == 0 or len(email) > 256:
-        return Response(jsonify(message="Field email is missing."), 400)
+    if type(email)!=str or len(email) == 0 or len(email) > 256:
+        return jsonify(message="Field email is missing."), 400
     password = request.json.get('password', '')
-    if len(password) == 0 or len(password) > 256:
-        return Response(jsonify(message="Field password is missing."), 400)
+    if type(password)!=str or len(password) == 0 or len(password) > 256:
+        return jsonify(message="Field password is missing."), 400
     isCustomer = request.json.get('isCustomer', None)
-    if isCustomer == None:
-        return Response(jsonify(message="Field isCustomer is missing."), 400)
+    if type(isCustomer)!=bool or isCustomer == None:
+        return jsonify(message="Field isCustomer is missing."), 400
 
     # Validation
-    if not re.compile("^\w+@\w+\.com$").match(email):
-        return Response(jsonify(message="Invalid email."), 400)
+    if not email_regex.match(email):
+        return jsonify(message="Invalid email."), 400
 
     if len(password) < 8 or not re.compile("[a-z]+").search(password) or not re.compile("[a-z]+").search(
             password) or not re.compile("\d+").search(password):
-        return Response(jsonify(message="Invalid password."), 400)
+        return jsonify(message="Invalid password."), 400
 
     registeredUser = User.query.filter(User.email == email).first()
     if registeredUser:
-        return Response(jsonify(message="Email already exists."), 400)
+        return jsonify(message="Email already exists."), 400
 
     # Registration
     if isCustomer:
@@ -62,24 +64,24 @@ def login():
     # Geting Fields
     email = request.json.get("email", "")
     password = request.json.get("password", "")
-    if len(email) == 0 or len(email) > 256:
-        return Response("Field email is missing.", status=400)
-    if len(password) == 0 or len(password) > 256:
-        return Response("Field password is missing.", status=400)
+    if type(email)!=str or len(email) == 0 or len(email) > 256:
+        return jsonify(message="Field email is missing."), 400
+    if type(password)!=str or (password) == 0 or len(password) > 256:
+        return jsonify(message="Field password is missing."), 400
 
     # Validation
-    if not re.compile("^\w+@\w+\.com$").match(email):
-        return Response(jsonify(message="Invalid email."), 400)
+    if not email_regex.match(email):
+        return jsonify(message="Invalid email."), 400
 
     user = User.query.filter(and_(User.email == email, User.password == password)).first()
     if not user:
-        return Response("Invalid credentials!", status=400)
+        return jsonify(message="Invalid credentials!"), 400
 
     # Creating Token
     additionalClaims = {
         "forename": user.forename,
         "surname": user.surname,
-        "roles": [str(role) for role in user.roles]
+        "role": user.role,
     }
 
     accessToken = create_access_token(identity=user.email, additional_claims=additionalClaims)
@@ -100,7 +102,7 @@ def refresh():
         "role": refreshClaims["role"]
     }
 
-    return Response(jsonify(create_access_token(identity=identity, additional_claims=additionalClaims), status=200))
+    return jsonify(create_access_token(identity=identity, additional_claims=additionalClaims)), 200
 
 
 @application.route("/", methods=["GET"])
@@ -114,16 +116,16 @@ def delete():
     # Geting Fields
     email = request.json.get("email", "")
 
-    if len(email) == 0 or len(email) > 256:
-        return Response("Field email is missing.", status=400)
+    if type(email)!=str or len(email) == 0 or len(email) > 256:
+        return jsonify(message = "Field email is missing."), 400
 
     # Validation
-    if not re.compile("^\w+@\w+\.com$").match(email):
-        return Response(jsonify(message="Invalid email."), 400)
+    if not email_regex.match(email):
+        return jsonify(message="Invalid email."), 400
 
     user = User.query.filter(User.email == email).first()
     if not user:
-        return Response("Invalid credentials!", status=400)
+        return jsonify(message="Invalid credentials!"), 400
 
     # Deleting
     database.session.delete(user)
