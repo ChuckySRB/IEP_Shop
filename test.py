@@ -1,0 +1,1 @@
+print("ame i" in 'name i')
